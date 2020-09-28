@@ -50,3 +50,5 @@ kill -s USR1 $jobro_pid
 `http://localhost:8080/api/info` - информация о задачах
 
 `http://localhost:8080/api/schedule/run?id=task_uuid` - внеочередной запуск периодического, либо `manual` задания
+
+`http://localhost:8080/api/reload` - перезагрузка конфигурации

@@ -3,6 +3,7 @@ package endpoint
 import (
 	"encoding/json"
 	"github.com/google/uuid"
+	"github.com/stepan-s/jobro/config"
 	"github.com/stepan-s/jobro/log"
 	"github.com/stepan-s/jobro/pool/instant"
 	"github.com/stepan-s/jobro/pool/scheduler"
@@ -14,7 +15,7 @@ type Info struct {
 	Instant  []instant.PoolInfo   `json:"instant"`
 }
 
-func BindApi(cronScheduler *scheduler.Scheduler, instantPool *instant.Pools, pattern string) {
+func BindApi(cronScheduler *scheduler.Scheduler, instantPool *instant.Pools, conf *config.Config, pattern string) {
 	http.HandleFunc(pattern+"/info", func(w http.ResponseWriter, r *http.Request) {
 		info := Info{
 			Schedule: cronScheduler.GetInfo(),
@@ -36,6 +37,10 @@ func BindApi(cronScheduler *scheduler.Scheduler, instantPool *instant.Pools, pat
 			w.Header().Add("X-Error", err.Error())
 			w.WriteHeader(http.StatusInternalServerError)
 		}
+	})
+
+	http.HandleFunc(pattern+"/reload", func(w http.ResponseWriter, r *http.Request) {
+		conf.Update()
 	})
 
 	http.HandleFunc(pattern+"/schedule/run", func(w http.ResponseWriter, r *http.Request) {

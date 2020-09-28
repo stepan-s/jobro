@@ -34,9 +34,10 @@ func main() {
 
 	// Create and run services
 	stats := endpoint.NewStats()
+	conf := config.New(*configCommand)
 	cronScheduler := scheduler.New()
 	instantPool := instant.New()
-	endpoint.BindApi(cronScheduler, instantPool, "/api")
+	endpoint.BindApi(cronScheduler, instantPool, &conf, "/api")
 	endpoint.BindMetrics(cronScheduler, instantPool, stats, "/metrics")
 	srv := &http.Server{Addr: *addr}
 
@@ -83,8 +84,7 @@ func main() {
 		}
 	}()
 
-	conf := config.New(*configCommand)
-	onUpdate := func(taskConfig *config.TasksConfig) {
+	conf.SetOnUpdate(func(taskConfig *config.TasksConfig) {
 		cronScheduler.SetTasks(taskConfig.Schedule)
 		instantPool.SetTasks(taskConfig.Instant)
 
@@ -93,8 +93,8 @@ func main() {
 			endpoint.ActionIncrement,
 			1,
 		})
-	}
-	conf.Update(onUpdate)
+	})
+	conf.Update()
 
 	go func() {
 		sigusr1 := make(chan os.Signal, 1)
@@ -104,7 +104,7 @@ func main() {
 			select {
 			case <-sigusr1:
 				log.Info("Reload signal received")
-				conf.Update(onUpdate)
+				conf.Update()
 			}
 		}
 	}()

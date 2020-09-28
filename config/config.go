@@ -14,6 +14,7 @@ import (
 type Config struct {
 	command     string
 	fingerprint string
+	onUpdate    func(*TasksConfig)
 }
 
 type TasksConfig struct {
@@ -27,7 +28,11 @@ func New(command string) Config {
 	}
 }
 
-func (config *Config) Update(onUpdate func(*TasksConfig)) bool {
+func (config *Config) SetOnUpdate(onUpdate func(*TasksConfig))  {
+	config.onUpdate = onUpdate
+}
+
+func (config *Config) Update() bool {
 	var err error
 	var args []string
 	args, err = shellwords.Parse(config.command)
@@ -58,6 +63,8 @@ func (config *Config) Update(onUpdate func(*TasksConfig)) bool {
 		return false
 	}
 
-	onUpdate(&conf)
+	if config.onUpdate != nil {
+		config.onUpdate(&conf)
+	}
 	return true
 }
