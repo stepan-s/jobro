@@ -8,7 +8,46 @@ import (
 	"net/http"
 )
 
-func BindMetrics(cronScheduler *scheduler.Scheduler, instantPool *instant.Pools, pattern string) {
+const SubjectReload = 0
+const ActionIncrement = 0
+
+type StatsTransaction struct {
+	Subject uint8
+	Action  uint8
+	Value	uint64
+}
+
+type Stats struct {
+	inChan  chan StatsTransaction
+	reloads uint64
+}
+
+func NewStats() *Stats {
+	stats := &Stats{
+		inChan:  make(chan StatsTransaction, 100),
+		reloads: 0,
+	}
+	go func() {
+		for {
+			select {
+			case transaction := <- stats.inChan:
+				switch transaction.Subject {
+				case SubjectReload:
+					if transaction.Action == ActionIncrement {
+						stats.reloads += transaction.Value
+					}
+				}
+			}
+		}
+	}()
+	return stats
+}
+
+func (stats *Stats) Send(transaction StatsTransaction) {
+	stats.inChan <- transaction
+}
+
+func BindMetrics(cronScheduler *scheduler.Scheduler, instantPool *instant.Pools, stats *Stats, pattern string) {
 	prometheus.MustRegister(prometheus.NewCounterFunc(
 		prometheus.CounterOpts{
 			Name: "jobro_schedule_tasks_done",
@@ -65,6 +104,14 @@ func BindMetrics(cronScheduler *scheduler.Scheduler, instantPool *instant.Pools,
 			Help: "The current number running tasks",
 		}, func() float64 {
 			return float64(instantPool.GetRunning())
+		}))
+
+	prometheus.MustRegister(prometheus.NewCounterFunc(
+		prometheus.CounterOpts{
+			Name: "jobro_reloads",
+			Help: "The total number config reloads",
+		}, func() float64 {
+			return float64(stats.reloads)
 		}))
 
 	http.Handle(pattern, promhttp.Handler())

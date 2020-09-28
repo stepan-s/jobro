@@ -33,10 +33,11 @@ func main() {
 	log.Info("  log-level: %v", *logLevel)
 
 	// Create and run services
+	stats := endpoint.NewStats()
 	cronScheduler := scheduler.New()
 	instantPool := instant.New()
 	endpoint.BindApi(cronScheduler, instantPool, "/api")
-	endpoint.BindMetrics(cronScheduler, instantPool, "/metrics")
+	endpoint.BindMetrics(cronScheduler, instantPool, stats, "/metrics")
 	srv := &http.Server{Addr: *addr}
 
 	exit := make(chan int, 10)
@@ -86,6 +87,12 @@ func main() {
 	onUpdate := func(taskConfig *config.TasksConfig) {
 		cronScheduler.SetTasks(taskConfig.Schedule)
 		instantPool.SetTasks(taskConfig.Instant)
+
+		stats.Send(endpoint.StatsTransaction{
+			endpoint.SubjectReload,
+			endpoint.ActionIncrement,
+			1,
+		})
 	}
 	conf.Update(onUpdate)
 
