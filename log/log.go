@@ -65,6 +65,9 @@ func (logger *Logger) getLogger() *stdLog.Logger {
 }
 
 func (logger *Logger) write(level uint8, message *string, v ...interface{}) {
+	if level > logger.level {
+		return
+	}
 	var levelCaption string
 	switch level {
 	case NONE:
