@@ -36,6 +36,7 @@ func (config *Config) Update(onUpdate func(*TasksConfig)) bool {
 		return false
 	}
 
+	log.Debug("Execute config command: '%v' with args: %v", args[0], args[1:])
 	out, err := exec.Command(args[0], args[1:]...).Output()
 	if err != nil {
 		log.Error("Fail get config %v", err)
