@@ -105,28 +105,18 @@ func (task *Task) Exec(execDescription string) {
 	task.pids = append(task.pids, pid)
 	task.state <- Notify{Start, pid, task.id}
 
-	err = proc.Release()
-	if err != nil {
-		log.Error("Fail release process pid %d, error: %v", pid, err)
-	}
-
-	proc, err = os.FindProcess(pid)
+	log.Info("Task %v %s exec %v", pid, execDescription, task.cmd)
+	state, err := proc.Wait()
 	if err == nil {
-		log.Info("Task %v %s exec %v", pid, execDescription, task.cmd)
-		state, err := proc.Wait()
-		if err == nil {
-			exitCode := state.ExitCode()
-			if exitCode == 0 {
-				log.Info("Task %v done", pid)
-			} else {
-				task.state <- Notify{Error, pid, task.id}
-				log.Info("Task %v fail with code: %v", pid, exitCode)
-			}
+		exitCode := state.ExitCode()
+		if exitCode == 0 {
+			log.Info("Task %v done", pid)
 		} else {
-			log.Info("Task wait %v fail with error: %v", pid, err)
+			task.state <- Notify{Error, pid, task.id}
+			log.Info("Task %v fail with code: %v", pid, exitCode)
 		}
 	} else {
-		log.Info("Task %v not found, error: %v", pid, err)
+		log.Info("Task wait %v fail with error: %v", pid, err)
 	}
 }
 
