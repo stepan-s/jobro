@@ -90,7 +90,10 @@ func (task *Task) Exec(execDescription string) {
 			nil,
 			nil,
 		},
-		Sys: &syscall.SysProcAttr{Noctty: true},
+		Sys: &syscall.SysProcAttr{
+			// in docker: inappropriate ioctl for device
+			//Noctty: true,
+		},
 	})
 	if err != nil {
 		task.state <- Notify{FailStart, 0, task.id}
