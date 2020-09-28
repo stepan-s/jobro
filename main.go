@@ -60,8 +60,16 @@ func main() {
 	go func() {
 		sigint := make(chan os.Signal, 1)
 		signal.Notify(sigint, os.Interrupt)
-		<-sigint
-		log.Info("Interrupt signal received, shutdown begin")
+
+		sigquit := make(chan os.Signal, 1)
+		signal.Notify(sigquit, syscall.SIGQUIT)
+
+		select {
+		case <-sigint:
+			log.Info("Interrupt signal received, shutdown begin")
+		case <-sigquit:
+			log.Info("Quit signal received, shutdown begin")
+		}
 
 		cronScheduler.Stop(func() {
 			exit <- 0
