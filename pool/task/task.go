@@ -6,8 +6,6 @@ import (
 	"github.com/stepan-s/jobro/log"
 	"os"
 	"os/exec"
-	"path/filepath"
-	"syscall"
 )
 
 const FailStart = 0
@@ -71,52 +69,31 @@ func (task *Task) Exec(execDescription string) {
 	}
 
 	command := args[0]
-	if filepath.Base(command) == command {
-		lp, err := exec.LookPath(command)
-		if err != nil {
-			task.state <- Notify{FailStart, pid, task.id}
-			log.Error("Fail find command, %s Task: %v, error: %v", execDescription, task.cmd, err)
-			return
-		}
-		command = lp
-	}
+	cmd := exec.Command(command, args[1:]...);
 
 	log.Debug("Start process %v, with: %v", command, args)
-	proc, err := os.StartProcess(command, args, &os.ProcAttr{
-		Dir: ".",
-		Env: os.Environ(),
-		Files: []*os.File{
-			os.Stdin,
-			nil,
-			nil,
-		},
-		Sys: &syscall.SysProcAttr{
-			// in docker: inappropriate ioctl for device
-			//Noctty: true,
-		},
-	})
+	err = cmd.Start()
 	if err != nil {
 		task.state <- Notify{FailStart, 0, task.id}
 		log.Error("Fail start %s Task: %v, error: %v", execDescription, task.cmd, err)
 		return
 	}
 
-	pid = proc.Pid
+	pid = cmd.Process.Pid
 	task.pids = append(task.pids, pid)
 	task.state <- Notify{Start, pid, task.id}
 
 	log.Info("Task %v %s exec %v", pid, execDescription, task.cmd)
-	state, err := proc.Wait()
-	if err == nil {
-		exitCode := state.ExitCode()
-		if exitCode == 0 {
-			log.Info("Task %v done", pid)
-		} else {
+	err = cmd.Wait()
+	if err != nil {
+		if e, ok := err.(*exec.ExitError); ok {
 			task.state <- Notify{Error, pid, task.id}
-			log.Info("Task %v fail with code: %v", pid, exitCode)
+			log.Info("Task %v fail with code: %v", pid, e.ExitCode())
+		} else {
+			log.Info("Task wait %v fail with error: %v", pid, err)
 		}
 	} else {
-		log.Info("Task wait %v fail with error: %v", pid, err)
+		log.Info("Task %v done", pid)
 	}
 }
 
